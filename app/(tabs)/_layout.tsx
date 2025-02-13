@@ -66,6 +66,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="questionmark" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="diagram"
+        options={{
+          title: 'Diagram',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="questionmark" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
