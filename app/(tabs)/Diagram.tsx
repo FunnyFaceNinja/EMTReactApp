@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import InteractiveDiagram from '../../components/InteractiveDiagram';
 
 export default function Diagram() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome to the Diagram page!</Text>
+      <InteractiveDiagram />
     </View>
   );
 }
@@ -15,9 +16,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F2F7D9',
-  },
-  text: {
-    fontSize: 24,
-    color: 'black',
   },
 });
