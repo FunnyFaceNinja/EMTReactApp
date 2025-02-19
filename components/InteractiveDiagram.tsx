@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import Svg from 'react-native-svg';
+import SkeletonSvg from '../assets/images/SkeletonSVG.svg'; // Adjust the path as necessary
+
+const { width, height } = Dimensions.get('window');
 
 const InteractiveDiagram = () => {
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
 
-  const handlePress = (part: string) => {
-    setSelectedPart(part);
+  const handlePress = () => {
+    console.log('Image pressed');
+    setSelectedPart('Interactivity Successful');
   };
 
   return (
     <View style={styles.container}>
-      <Svg width="200" height="200" viewBox="0 0 200 200">
-        <Circle cx="50" cy="50" r="30" fill="red" onPress={() => handlePress('left-atrium')} />
-        <Circle cx="150" cy="50" r="30" fill="red" onPress={() => handlePress('right-atrium')} />
-        <Circle cx="50" cy="150" r="30" fill="red" onPress={() => handlePress('left-ventricle')} />
-        <Circle cx="150" cy="150" r="30" fill="red" onPress={() => handlePress('right-ventricle')} />
-      </Svg>
-      {selectedPart && <Text style={styles.label}>{selectedPart.replace('-', ' ')}</Text>}
+      <TouchableOpacity onPress={handlePress} style={{ width: '100%', height: '100%' }}>
+        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+          <SkeletonSvg width="100%" height="100%" />
+        </Svg>
+      </TouchableOpacity>
+      {selectedPart && <Text style={styles.label}>{selectedPart}</Text>}
     </View>
   );
 };
@@ -28,11 +31,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F2F7D9',
+    width: '100%',
+    height: '100%',
   },
   label: {
-    marginTop: 20,
-    fontSize: 18,
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    fontSize: 24,
     color: 'black',
+    textAlign: 'center',
   },
 });
 
