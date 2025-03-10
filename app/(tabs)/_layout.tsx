@@ -1,11 +1,10 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
-import { useColorScheme } from '@/hooks/useColorScheme';
 
 const Colors = {
   light: {
@@ -35,7 +34,6 @@ export default function TabLayout() {
           backgroundColor: themeColors.tabBar,
           ...Platform.select({
             ios: {
-              // Use a transparent background on iOS to show the blur effect
               position: 'absolute',
             },
             default: {},
@@ -71,6 +69,13 @@ export default function TabLayout() {
         options={{
           title: 'Diagram',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="questionmark" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="HighScores"
+        options={{
+          title: 'High Scores',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
     </Tabs>

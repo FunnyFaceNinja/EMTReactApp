@@ -1,49 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Button, TouchableOpacity, useColorScheme } from 'react-native';
 import { RadioButton, ProgressBar } from 'react-native-paper';
+import { databases } from '../../appwriteConfig';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
-const questions = [
-  {
-    question: 'The pressure felt upon the walls of the artery when the heart contracts is known as what type of pressure?',
-    options: ['A. Systolic', 'B. Diastolic', 'C. Blood', 'D. Palpated'],
-    answer: 'A',
-  },
-  {
-    question: 'Which of the following systems controls breathing?',
-    options: ['A. Respiratory', 'B. Skeletal', 'C. Cardiovascular', 'D. Nervous'],
-    answer: 'D',
-  },
-  {
-    question: 'The adult human skeleton is made up of how many bones?',
-    options: ['A. 203', 'B. 212', 'C. 206', 'D. 33'],
-    answer: 'C',
-  },
-  {
-    question: 'In the pneumonic OPQRST what does S stand for?',
-    options: ['A. Signs', 'B. Severity', 'C. Symptoms', 'D. Side effects'],
-    answer: 'B',
-  },
-  {
-    question: 'When obtaining a blood pressure by palpation, you should be placing your fingers on which of the following arteries?',
-    options: ['A. Carotid', 'B. Brachial', 'C. Femoral', 'D. Radial'],
-    answer: 'D',
-  },
-];
+type RootStackParamList = {
+  MCQ: { testId: string };
+  HighScoresStack: { testId: string }; // Updated to use HighScoresStack
+};
 
-export default function MCQScreen() {
+type MCQScreenRouteProp = RouteProp<RootStackParamList, 'MCQ'>;
+
+interface MCQScreenProps {
+  route?: MCQScreenRouteProp; // Make route optional
+}
+
+interface Question {
+  documentId: string;
+  data: {
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: string;
+    selectedOption: string;
+    isCorrect: boolean;
+  };
+}
+
+export default function MCQScreen({ route }: MCQScreenProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedOption, setSelectedOption] = useState('');
   const [testStarted, setTestStarted] = useState(false);
   const [testEnded, setTestEnded] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  // Use useRoute to safely access route.params
+  const safeRoute = useRoute<MCQScreenRouteProp>();
+  const { testId } = safeRoute.params || { testId: 'test1' }; // Fallback to 'test1' if params are undefined
+
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const response = await databases.listDocuments(
+          '67bc7a3300045b341a68', // Replace with your database ID
+          '67bc7a60002cea5f0f06' // Replace with your collection ID
+        );
+
+        // Map the Appwrite documents to your Question type
+        const allQuestions = response.documents.map((doc) => ({
+          documentId: doc.$id, // Use the Appwrite document ID
+          data: {
+            question: doc.question,
+            optionA: doc.optionA,
+            optionB: doc.optionB,
+            optionC: doc.optionC,
+            optionD: doc.optionD,
+            correctAnswer: doc.correctAnswer,
+            selectedOption: doc.selectedOption || '', // Default to empty string if not present
+            isCorrect: doc.isCorrect || false, // Default to false if not present
+          },
+        })) as Question[];
+
+        const startIndex = testId === 'test1' ? 0 : 5;
+        const endIndex = testId === 'test1' ? 5 : 10;
+        setQuestions(allQuestions.slice(startIndex, endIndex));
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [testId]);
 
   const handleStartTest = () => {
     setTestStarted(true);
   };
 
   const handleNextQuestion = () => {
-    if (selectedOption === questions[currentQuestion].answer) {
+    if (selectedOption === questions[currentQuestion].data.correctAnswer) {
       setCorrectAnswers(correctAnswers + 1);
     }
     if (currentQuestion < questions.length - 1) {
@@ -51,6 +94,7 @@ export default function MCQScreen() {
       setSelectedOption('');
     } else {
       setTestEnded(true);
+      saveHighScore((correctAnswers / questions.length) * 100, testId);
     }
   };
 
@@ -66,10 +110,35 @@ export default function MCQScreen() {
     setCorrectAnswers(0);
   };
 
+  const saveHighScore = async (score: number, testId: string) => {
+    try {
+      await databases.createDocument(
+        '67bc7a3300045b341a68', // Replace with your database ID
+        '67c9cd07000cbea7e5d1', // Replace with your collection ID
+        'unique()', // Unique ID for the document
+        {
+          testId: testId,
+          score: score,
+          timestamp: new Date().toISOString(),
+        }
+      );
+    } catch (error) {
+      console.error('Error saving high score:', error);
+    }
+  };
+
   const textColor = 'black';
   const backgroundColor = '#F2F7D9';
   const buttonColor = '#F26969';
   const progress = (currentQuestion + 1) / questions.length;
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor }]}>
+        <Text style={[styles.text, { color: textColor }]}>Loading questions...</Text>
+      </View>
+    );
+  }
 
   if (!testStarted) {
     return (
@@ -87,6 +156,11 @@ export default function MCQScreen() {
         <Text style={[styles.text, { color: textColor }]}>You have completed the test!</Text>
         <Text style={[styles.text, { color: textColor }]}>Your score: {score}%</Text>
         <Button title="Restart Test" onPress={handleRestartTest} color={buttonColor} />
+        <Button
+          title="View High Scores"
+          onPress={() => navigation.navigate('HighScoresStack', { testId: testId })} // Updated to use HighScoresStack
+          color={buttonColor}
+        />
       </View>
     );
   }
@@ -96,16 +170,18 @@ export default function MCQScreen() {
       <View style={styles.progressBarContainer}>
         <ProgressBar progress={progress} color={buttonColor} style={styles.progressBar} />
       </View>
-      <Text style={[styles.text, { color: textColor }]}>{questions[currentQuestion].question}</Text>
-      {questions[currentQuestion].options.map((option, index) => (
-        <TouchableOpacity key={index} onPress={() => handleOptionSelect(option[0])} style={styles.optionContainer}>
+      <Text style={[styles.text, { color: textColor }]}>{questions[currentQuestion].data.question}</Text>
+      {['A', 'B', 'C', 'D'].map((option, index) => (
+        <TouchableOpacity key={index} onPress={() => handleOptionSelect(option)} style={styles.optionContainer}>
           <RadioButton
-            value={option[0]}
-            status={selectedOption === option[0] ? 'checked' : 'unchecked'}
-            onPress={() => handleOptionSelect(option[0])}
+            value={option}
+            status={selectedOption === option ? 'checked' : 'unchecked'}
+            onPress={() => handleOptionSelect(option)}
             color={buttonColor}
           />
-          <Text style={[styles.optionText, { color: textColor }]}>{option}</Text>
+          <Text style={[styles.optionText, { color: textColor }]}>
+            {questions[currentQuestion].data[`option${option}` as keyof typeof questions[number]['data']]}
+          </Text>
         </TouchableOpacity>
       ))}
       <Button title="Next Question" onPress={handleNextQuestion} disabled={!selectedOption} color={buttonColor} />
