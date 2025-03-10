@@ -7,7 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
   MCQ: { testId: string };
-  HighScoresStack: { testId: string }; // Updated to use HighScoresStack
+  HighScores: { testId: string };
 };
 
 type MCQScreenRouteProp = RouteProp<RootStackParamList, 'MCQ'>;
@@ -38,63 +38,76 @@ export default function MCQScreen({ route }: MCQScreenProps) {
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [testId, setTestId] = useState<string | null>(null); // Track selected test ID
   const colorScheme = useColorScheme();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   // Use useRoute to safely access route.params
   const safeRoute = useRoute<MCQScreenRouteProp>();
-  const { testId } = safeRoute.params || { testId: 'test1' }; // Fallback to 'test1' if params are undefined
+  const { testId: routeTestId } = safeRoute.params || { testId: null };
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const response = await databases.listDocuments(
-          '67bc7a3300045b341a68', // Replace with your database ID
-          '67bc7a60002cea5f0f06' // Replace with your collection ID
-        );
+    if (routeTestId) {
+      setTestId(routeTestId);
+    }
+  }, [routeTestId]);
 
-        // Map the Appwrite documents to your Question type
-        const allQuestions = response.documents.map((doc) => ({
-          documentId: doc.$id, // Use the Appwrite document ID
-          data: {
-            question: doc.question,
-            optionA: doc.optionA,
-            optionB: doc.optionB,
-            optionC: doc.optionC,
-            optionD: doc.optionD,
-            correctAnswer: doc.correctAnswer,
-            selectedOption: doc.selectedOption || '', // Default to empty string if not present
-            isCorrect: doc.isCorrect || false, // Default to false if not present
-          },
-        })) as Question[];
+  useEffect(() => {
+    if (testId) {
+      const fetchQuestions = async () => {
+        try {
+          const response = await databases.listDocuments(
+            '67bc7a3300045b341a68', // Replace with your database ID
+            '67bc7a60002cea5f0f06' // Replace with your collection ID
+          );
 
-        const startIndex = testId === 'test1' ? 0 : 5;
-        const endIndex = testId === 'test1' ? 5 : 10;
-        setQuestions(allQuestions.slice(startIndex, endIndex));
-      } catch (error) {
-        console.error('Error fetching questions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+          // Map the Appwrite documents to your Question type
+          const allQuestions = response.documents.map((doc) => ({
+            documentId: doc.$id, // Use the Appwrite document ID
+            data: {
+              question: doc.question,
+              optionA: doc.optionA,
+              optionB: doc.optionB,
+              optionC: doc.optionC,
+              optionD: doc.optionD,
+              correctAnswer: doc.correctAnswer,
+              selectedOption: doc.selectedOption || '', // Default to empty string if not present
+              isCorrect: doc.isCorrect || false, // Default to false if not present
+            },
+          })) as Question[];
 
-    fetchQuestions();
+          const startIndex = testId === 'test1' ? 0 : 5;
+          const endIndex = testId === 'test1' ? 5 : 10;
+          setQuestions(allQuestions.slice(startIndex, endIndex));
+        } catch (error) {
+          console.error('Error fetching questions:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchQuestions();
+    }
   }, [testId]);
 
-  const handleStartTest = () => {
+  const handleStartTest = (selectedTestId: string) => {
+    setTestId(selectedTestId);
     setTestStarted(true);
   };
 
   const handleNextQuestion = () => {
+    let updatedCorrectAnswers = correctAnswers;
     if (selectedOption === questions[currentQuestion].data.correctAnswer) {
-      setCorrectAnswers(correctAnswers + 1);
+      updatedCorrectAnswers += 1;
+      setCorrectAnswers(updatedCorrectAnswers);
     }
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedOption('');
     } else {
       setTestEnded(true);
-      saveHighScore((correctAnswers / questions.length) * 100, testId);
+      const score = (updatedCorrectAnswers / questions.length) * 100;
+      saveHighScore(score, testId!);
     }
   };
 
@@ -108,6 +121,7 @@ export default function MCQScreen({ route }: MCQScreenProps) {
     setTestStarted(false);
     setTestEnded(false);
     setCorrectAnswers(0);
+    setTestId(null); // Reset test selection
   };
 
   const saveHighScore = async (score: number, testId: string) => {
@@ -132,6 +146,16 @@ export default function MCQScreen({ route }: MCQScreenProps) {
   const buttonColor = '#F26969';
   const progress = (currentQuestion + 1) / questions.length;
 
+  if (!testId) {
+    return (
+      <View style={[styles.container, { backgroundColor }]}>
+        <Text style={[styles.text, { color: textColor }]}>Choose a Test</Text>
+        <Button title="Test 1" onPress={() => handleStartTest('test1')} color={buttonColor} />
+        <Button title="Test 2" onPress={() => handleStartTest('test2')} color={buttonColor} />
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
@@ -144,7 +168,7 @@ export default function MCQScreen({ route }: MCQScreenProps) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
         <Text style={[styles.text, { color: textColor }]}>Do you want to start the test?</Text>
-        <Button title="Start Test" onPress={handleStartTest} color={buttonColor} />
+        <Button title="Start Test" onPress={() => setTestStarted(true)} color={buttonColor} />
       </View>
     );
   }
@@ -158,7 +182,7 @@ export default function MCQScreen({ route }: MCQScreenProps) {
         <Button title="Restart Test" onPress={handleRestartTest} color={buttonColor} />
         <Button
           title="View High Scores"
-          onPress={() => navigation.navigate('HighScoresStack', { testId: testId })} // Updated to use HighScoresStack
+          onPress={() => navigation.navigate('HighScores', { testId: testId })}
           color={buttonColor}
         />
       </View>
