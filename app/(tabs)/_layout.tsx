@@ -78,6 +78,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="ScenarioScreen"
+        options={{
+          title: 'Scenarios',
+          tabBarIcon: ({ color }) => <IconSymbol name="questionmark" color={color} size={28} />,
+        }}
+      />
     </Tabs>
   );
 }

@@ -1,23 +1,27 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Svg from 'react-native-svg';
-import SkeletonSvg from '../assets/images/SkeletonSVG.svg'; // Adjust the path as necessary
+import SkeletonReactComponent from '../assets/images/SkeletonReactComponent'; // Import your React Native component
 
 const { width, height } = Dimensions.get('window');
 
 const InteractiveDiagram = () => {
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
 
-  const handlePress = () => {
-    console.log('Image pressed');
-    setSelectedPart('Interactivity Successful');
+  const handlePartClick = (part: string) => {
+    setSelectedPart(part);
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={handlePress} style={{ width: '100%', height: '100%' }}>
+      <TouchableOpacity style={{ width: '100%', height: '100%' }}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          <SkeletonSvg width="100%" height="100%" />
+          <SkeletonReactComponent
+            width="100%"
+            height="100%"
+            highlightedPart={selectedPart}
+            onPartClick={handlePartClick}
+          />
         </Svg>
       </TouchableOpacity>
       {selectedPart && <Text style={styles.label}>{selectedPart}</Text>}
